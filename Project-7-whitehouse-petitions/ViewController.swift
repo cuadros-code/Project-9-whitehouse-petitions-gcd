@@ -49,6 +49,31 @@ class ViewController: UITableViewController {
             menu: menu
         )
         
+        performSelector(inBackground: #selector(fetchJSON), with: nil)
+        
+//        let urlString: String
+//
+//        if navigationController?.tabBarItem.tag == 0 {
+//            urlString = "https://www.hackingwithswift.com/samples/petitions-1.json"
+//        } else {
+//            urlString = "https://www.hackingwithswift.com/samples/petitions-2.json"
+//        }
+//        
+//        // [ IMPORTANT ] All code inside the closure also work in the Background Thread
+//        // in this case [ parce(json: data), showError() ]
+//        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+//            if let url = URL(string: urlString) {
+//                if let data = try? Data(contentsOf: url) {
+//                    self?.parse(json: data)
+//                    return
+//                }
+//            }
+//            
+//            self?.showError()
+//        }
+    }
+    
+    @objc func fetchJSON() {
         let urlString: String
 
         if navigationController?.tabBarItem.tag == 0 {
@@ -56,33 +81,45 @@ class ViewController: UITableViewController {
         } else {
             urlString = "https://www.hackingwithswift.com/samples/petitions-2.json"
         }
-        
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            if let url = URL(string: urlString) {
-                if let data = try? Data(contentsOf: url) {
-                    self?.parse(json: data)
-                    return
-                }
+      
+        if let url = URL(string: urlString) {
+            if let data = try? Data(contentsOf: url) {
+                parse(json: data)
+                return
             }
-            
-            self?.showError()
         }
+        performSelector(onMainThread: #selector(showError), with: nil, waitUntilDone: false)
     }
     
-    func showError() {
-        DispatchQueue.main.async { [weak self] in
-            let ac = UIAlertController(
-                title: "Loading error",
-                message: "There was a problem loading the feed; please check your connection and try again.",
-                preferredStyle: .alert
-            )
-            ac.addAction(UIAlertAction(
-                title: "OK",
-                style: .default
-            ))
-            self?.present(ac, animated: true)
-        }
+    @objc func showError() {
+        let ac = UIAlertController(
+            title: "Loading error",
+            message: "There was a problem loading the feed; please check your connection and try again.",
+            preferredStyle: .alert
+        )
+        ac.addAction(UIAlertAction(
+            title: "OK",
+            style: .default
+        ))
+        present(ac, animated: true)
     }
+    
+//    func showError() {
+//        
+//        // Como back to main thread in the interface update
+//        DispatchQueue.main.async { [weak self] in
+//            let ac = UIAlertController(
+//                title: "Loading error",
+//                message: "There was a problem loading the feed; please check your connection and try again.",
+//                preferredStyle: .alert
+//            )
+//            ac.addAction(UIAlertAction(
+//                title: "OK",
+//                style: .default
+//            ))
+//            self?.present(ac, animated: true)
+//        }
+//    }
     
     @objc func showCredits() {
         let ac = UIAlertController(
@@ -135,9 +172,15 @@ class ViewController: UITableViewController {
         
         if let jsonPetitions = try? decoder.decode(Petitions.self, from: json) {
             petitions = jsonPetitions.results
-            DispatchQueue.main.async {
-                self.tableView.reloadData()
-            }
+            
+            tableView.performSelector(onMainThread: #selector(UITableView.reloadData), with: nil, waitUntilDone: false)
+            
+            // Como back to main thread in the interface update
+//            DispatchQueue.main.async { [weak self] in
+//                self?.tableView.reloadData()
+//            }
+        } else {
+            performSelector(onMainThread: #selector(showError), with: nil, waitUntilDone: false)
         }
     }
     
